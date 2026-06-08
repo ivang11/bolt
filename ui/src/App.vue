@@ -918,7 +918,7 @@
                                     <button
                                         v-if="s.status === 'running'"
                                         class="svc-btn shell"
-                                        @click="openShell(drawerName, s.name)"
+                                        @click="openProjectShell(drawerName, s.name)"
                                         title="Shell"
                                     >
                                         <svg
@@ -1146,7 +1146,7 @@
                                     <button
                                         class="svc-btn shell"
                                         :disabled="s.status !== 'running'"
-                                        @click="openShell(drawerName, s.name)"
+                                        @click="openProjectShell(drawerName, s.name)"
                                         title="Shell"
                                     >
                                         <svg
@@ -1246,7 +1246,7 @@
                         </div>
 
                         <!-- Shell terminal -->
-                        <div v-if="shellService" class="dw-shell">
+                        <div v-if="shellVisible" class="dw-shell">
                             <div class="dw-shell-header">
                                 <span class="dw-label" style="margin-bottom: 0">
                                     <svg
@@ -1612,7 +1612,6 @@ function toggleDrawer(name) {
         return;
     }
     stopLogs();
-    closeShell();
     drawerName.value = name;
     drawerSubdir.value = null;
     drawerComposeServices.value = [];
@@ -1642,6 +1641,8 @@ async function fetchComposeServices(name) {
 }
 
 function closeDrawer() {
+    const drawerShellOpen = shellService.value && shellProject.value === drawerName.value;
+    if (drawerShellOpen && !confirmShellLoss()) return;
     drawerName.value = null;
     drawerSubdir.value = null;
     drawerInfo.value = { path: "", ports: [] };
@@ -1653,7 +1654,7 @@ function closeDrawer() {
         buildSource = null;
     }
     stopLogs();
-    closeShell();
+    if (drawerShellOpen) closeShell();
 }
 
 function switchDrawerSubdir(subdir) {
@@ -1876,7 +1877,46 @@ function openConfig() {
 }
 
 // ── Shell ─────────────────────────────────────────────
-const { shellService, termEl, openShell, closeShell, fitShell } = useShell();
+const {
+    shellProject,
+    shellService,
+    termEl,
+    openShell,
+    closeShell,
+    attachShell,
+    fitShell,
+} = useShell();
+const shellVisible = computed(
+    () => shellService.value && shellProject.value === drawerName.value,
+);
+
+watch(shellVisible, (visible) => {
+    if (visible) attachShell();
+});
+
+async function openProjectShell(project, service) {
+    const replacingShell =
+        shellService.value &&
+        (shellProject.value !== project || shellService.value !== service);
+
+    if (replacingShell && !confirmShellLoss()) return;
+    await openShell(project, service);
+}
+
+function confirmShellLoss() {
+    if (!shellService.value) return true;
+    return window.confirm(
+        "Hay una terminal abierta. Si continúas se cerrará la sesión.",
+    );
+}
+
+function warnBeforeUnload(e) {
+    if (!shellService.value) return;
+    e.preventDefault();
+    e.returnValue = "";
+}
+
+window.addEventListener("beforeunload", warnBeforeUnload);
 
 // ── Keyboard shortcuts ────────────────────────────────
 document.addEventListener("keydown", (e) => {
@@ -1889,6 +1929,7 @@ let pollInterval = setInterval(() => fetchProjects({ silent: true }), 15000);
 onUnmounted(() => {
     stopLogs();
     clearInterval(pollInterval);
+    window.removeEventListener("beforeunload", warnBeforeUnload);
 });
 
 document.addEventListener("visibilitychange", () => {

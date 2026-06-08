@@ -5,6 +5,7 @@ import '@xterm/xterm/css/xterm.css'
 
 export function useShell() {
   const shellService = ref(null)
+  const shellProject = ref(null)
   const termEl       = ref(null)
   let term     = null
   let termWs   = null
@@ -13,6 +14,7 @@ export function useShell() {
   let resizeFrame = null
   let pasteHandler = null
   let keyHandler = null
+  let boundTermEl = null
 
   function sendResize() {
     if (term && termWs?.readyState === WebSocket.OPEN) {
@@ -37,8 +39,47 @@ export function useShell() {
     }
   }
 
+  function bindTermElement() {
+    if (!term || !termEl.value) return
+    if (boundTermEl === termEl.value) {
+      fitShell()
+      term.focus()
+      return
+    }
+
+    if (boundTermEl && pasteHandler) {
+      boundTermEl.removeEventListener('paste', pasteHandler, true)
+    }
+    resizeObserver?.disconnect()
+    resizeObserver = null
+
+    if (term.element) {
+      termEl.value.appendChild(term.element)
+    } else {
+      term.open(termEl.value)
+    }
+
+    boundTermEl = termEl.value
+    if (pasteHandler) boundTermEl.addEventListener('paste', pasteHandler, true)
+    resizeObserver = new ResizeObserver(() => fitShell())
+    resizeObserver.observe(boundTermEl)
+    fitShell()
+    term.focus()
+  }
+
+  async function attachShell() {
+    await nextTick()
+    bindTermElement()
+  }
+
   async function openShell(project, service) {
+    if (term && shellProject.value === project && shellService.value === service) {
+      await attachShell()
+      return
+    }
+
     closeShell()
+    shellProject.value = project
     shellService.value = service
     await nextTick()
 
@@ -50,12 +91,6 @@ export function useShell() {
     })
     fitAddon = new FitAddon()
     term.loadAddon(fitAddon)
-    term.open(termEl.value)
-    fitShell()
-    term.focus()
-
-    resizeObserver = new ResizeObserver(() => fitShell())
-    resizeObserver.observe(termEl.value)
     window.addEventListener('resize', fitShell)
 
     pasteHandler = (e) => {
@@ -88,6 +123,7 @@ export function useShell() {
       }
     }
     term.attachCustomKeyEventHandler((e) => keyHandler(e) !== false)
+    bindTermElement()
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     const url   = `${proto}://${location.host}/api/projects/${project}/shell?service=${encodeURIComponent(service)}`
@@ -116,15 +152,17 @@ export function useShell() {
     resizeObserver?.disconnect()
     resizeObserver = null
     window.removeEventListener('resize', fitShell)
-    if (termEl.value && pasteHandler) termEl.value.removeEventListener('paste', pasteHandler, true)
+    if (boundTermEl && pasteHandler) boundTermEl.removeEventListener('paste', pasteHandler, true)
+    boundTermEl = null
     pasteHandler = null
     keyHandler = null
     termWs?.close()
     termWs = null
     term?.dispose()
     term = null
+    shellProject.value = null
     shellService.value = null
   }
 
-  return { shellService, termEl, openShell, closeShell, fitShell }
+  return { shellProject, shellService, termEl, openShell, closeShell, attachShell, fitShell }
 }
