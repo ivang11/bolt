@@ -9,6 +9,33 @@ export function useShell() {
   let term     = null
   let termWs   = null
   let fitAddon = null
+  let resizeObserver = null
+  let resizeFrame = null
+  let pasteHandler = null
+  let keyHandler = null
+
+  function sendResize() {
+    if (term && termWs?.readyState === WebSocket.OPEN) {
+      termWs.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
+    }
+  }
+
+  function fitShell() {
+    if (!term || !fitAddon) return
+    if (resizeFrame) cancelAnimationFrame(resizeFrame)
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = null
+      if (!term || !fitAddon) return
+      fitAddon.fit()
+      sendResize()
+    })
+  }
+
+  function sendPaste(text) {
+    if (termWs?.readyState === WebSocket.OPEN) {
+      termWs.send(text.replace(/\r?\n/g, '\r'))
+    }
+  }
 
   async function openShell(project, service) {
     closeShell()
@@ -24,14 +51,50 @@ export function useShell() {
     fitAddon = new FitAddon()
     term.loadAddon(fitAddon)
     term.open(termEl.value)
-    fitAddon.fit()
+    fitShell()
     term.focus()
+
+    resizeObserver = new ResizeObserver(() => fitShell())
+    resizeObserver.observe(termEl.value)
+    window.addEventListener('resize', fitShell)
+
+    pasteHandler = (e) => {
+      const text = e.clipboardData?.getData('text')
+      if (!text) return
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+      sendPaste(text)
+    }
+    termEl.value.addEventListener('paste', pasteHandler, true)
+
+    keyHandler = (e) => {
+      if (!e.ctrlKey || e.altKey || e.metaKey) return
+
+      const key = e.key.toLowerCase()
+      if (key === 'c' && term?.hasSelection()) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        navigator.clipboard?.writeText(term.getSelection())
+        term.clearSelection()
+        return false
+      }
+
+      if (key === 'v' && !e.shiftKey) {
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+    term.attachCustomKeyEventHandler((e) => keyHandler(e) !== false)
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     const url   = `${proto}://${location.host}/api/projects/${project}/shell?service=${encodeURIComponent(service)}`
     termWs = new WebSocket(url)
     termWs.binaryType = 'arraybuffer'
 
+    termWs.onopen = () => fitShell()
     termWs.onmessage = (e) => {
       if (e.data instanceof ArrayBuffer) term.write(new Uint8Array(e.data))
       else term.write(e.data)
@@ -48,6 +111,14 @@ export function useShell() {
   }
 
   function closeShell() {
+    if (resizeFrame) cancelAnimationFrame(resizeFrame)
+    resizeFrame = null
+    resizeObserver?.disconnect()
+    resizeObserver = null
+    window.removeEventListener('resize', fitShell)
+    if (termEl.value && pasteHandler) termEl.value.removeEventListener('paste', pasteHandler, true)
+    pasteHandler = null
+    keyHandler = null
     termWs?.close()
     termWs = null
     term?.dispose()
@@ -55,5 +126,5 @@ export function useShell() {
     shellService.value = null
   }
 
-  return { shellService, termEl, openShell, closeShell }
+  return { shellService, termEl, openShell, closeShell, fitShell }
 }

@@ -1688,6 +1688,7 @@ function startResize(e) {
             MIN_DRAWER_WIDTH,
             Math.min(MAX_DRAWER_WIDTH, newWidth),
         );
+        nextTick(() => fitShell());
     };
     const onUp = () => {
         document.removeEventListener("mousemove", onMove);
@@ -1875,7 +1876,7 @@ function openConfig() {
 }
 
 // ── Shell ─────────────────────────────────────────────
-const { shellService, termEl, openShell, closeShell } = useShell();
+const { shellService, termEl, openShell, closeShell, fitShell } = useShell();
 
 // ── Keyboard shortcuts ────────────────────────────────
 document.addEventListener("keydown", (e) => {
