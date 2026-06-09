@@ -1,4 +1,3 @@
-
 use crate::config::Config;
 use anyhow::Result;
 use colored::Colorize;
@@ -187,8 +186,16 @@ pub fn run(config: &Config) -> Result<()> {
 
         if compose.exists() {
             let active = is_active(&path, &active_dirs);
-            let status = if active { "running".green() } else { "stopped".dimmed() };
-            let note = if ignored { format!("  {}", "ignored".dimmed()) } else { String::new() };
+            let status = if active {
+                "running".green()
+            } else {
+                "stopped".dimmed()
+            };
+            let note = if ignored {
+                format!("  {}", "ignored".dimmed())
+            } else {
+                String::new()
+            };
             println!("  {:<col_width$}  {}{}", name, status, note);
         } else {
             // Project with subdirectories — show subdirs inline on the same row
@@ -205,7 +212,11 @@ pub fn run(config: &Config) -> Result<()> {
             }
 
             let any_active = subdirs.iter().any(|s| is_active(&s.path(), &active_dirs));
-            let status = if any_active { "running".green() } else { "stopped".dimmed() };
+            let status = if any_active {
+                "running".green()
+            } else {
+                "stopped".dimmed()
+            };
             let allowed = config.subdirs_for(&name);
 
             let subs_inline: Vec<String> = subdirs
@@ -225,7 +236,11 @@ pub fn run(config: &Config) -> Result<()> {
                 })
                 .collect();
 
-            let note = if ignored { format!("  {}", "ignored".dimmed()) } else { String::new() };
+            let note = if ignored {
+                format!("  {}", "ignored".dimmed())
+            } else {
+                String::new()
+            };
 
             println!(
                 "  {:<col_width$}  {}{}  {}",

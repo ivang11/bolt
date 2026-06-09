@@ -12,13 +12,9 @@ pub enum Commands {
     /// Run the setup wizard
     Setup,
     /// Stop all active projects and start the specified one (interactive picker if no project given)
-    Switch {
-        project: Option<String>,
-    },
+    Switch { project: Option<String> },
     /// Start a project without stopping others (interactive picker if no project given)
-    Start {
-        project: Option<String>,
-    },
+    Start { project: Option<String> },
     /// List available projects in projects_dir
     List {
         /// Print project names only, one per line (for shell completions)
@@ -30,13 +26,9 @@ pub enum Commands {
     /// Stop all active projects in projects_dir
     Stop,
     /// Restart a project (down + up) without touching others
-    Restart {
-        project: String,
-    },
+    Restart { project: String },
     /// Rebuild Docker images for a project
-    Build {
-        project: String,
-    },
+    Build { project: String },
     /// Launch the web UI
     Ui {
         /// Port for the API server

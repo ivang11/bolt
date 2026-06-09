@@ -1,19 +1,31 @@
 {
-  "name": "bolt-ui",
-  "version": "1.1.1",
-  "private": true,
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@xterm/addon-fit": "^0.11.0",
-    "@xterm/xterm": "^6.0.0",
-    "vue": "^3.4.0"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.0",
-    "vite": "^5.0.0"
-  }
+    "name": "bolt-ui",
+    "version": "1.3.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "lint": "eslint src",
+        "format": "prettier --write src",
+        "format:check": "prettier --check src",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "@xterm/addon-fit": "^0.11.0",
+        "@xterm/xterm": "^6.0.0",
+        "pinia": "^3.0.4",
+        "vue": "^3.4.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "@vitejs/plugin-vue": "^5.0.0",
+        "eslint": "^10.4.1",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-vue": "^10.9.2",
+        "globals": "^17.6.0",
+        "prettier": "^3.8.3",
+        "vite": "^5.0.0",
+        "vue-eslint-parser": "^10.4.1"
+    }
 }

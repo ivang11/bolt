@@ -2,8 +2,8 @@ use crate::config::Config;
 use anyhow::Result;
 use colored::Colorize;
 use rustyline::completion::FilenameCompleter;
-use rustyline::{CompletionType, Editor};
 use rustyline::{Completer, Helper, Highlighter, Hinter, Validator};
+use rustyline::{CompletionType, Editor};
 use std::path::PathBuf;
 
 #[derive(Helper, Completer, Hinter, Validator, Highlighter)]
@@ -38,7 +38,11 @@ fn expand_tilde(path: &str) -> PathBuf {
     PathBuf::from(path)
 }
 
-enum Shell { Bash, Zsh, Fish }
+enum Shell {
+    Bash,
+    Zsh,
+    Fish,
+}
 
 fn detect_shell() -> Option<Shell> {
     let shell_bin = std::env::var("SHELL").unwrap_or_default();

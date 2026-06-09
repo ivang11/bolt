@@ -5,7 +5,7 @@ CLI to manage Docker Compose projects.
 ## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/IvanG11/bolt/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/ivang11/bolt/main/install.sh | sudo bash
 ```
 
 ### From source (requires Rust)

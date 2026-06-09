@@ -12,8 +12,12 @@ fn main() -> anyhow::Result<()> {
 
     let needs_config = matches!(
         cli.command,
-        Commands::Switch { .. } | Commands::Start { .. } | Commands::List { .. }
-        | Commands::Stop | Commands::Ui { .. } | Commands::Build { .. }
+        Commands::Switch { .. }
+            | Commands::Start { .. }
+            | Commands::List { .. }
+            | Commands::Stop
+            | Commands::Ui { .. }
+            | Commands::Build { .. }
     );
     if needs_config && !config.is_configured() {
         commands::onboarding::run(&mut config)?;
@@ -86,10 +90,7 @@ fn main() -> anyhow::Result<()> {
         Commands::Config { action } => match action {
             ConfigAction::Show => {
                 println!("{:#?}", config);
-                println!(
-                    "\n  (file: {})",
-                    config::Config::path().display()
-                );
+                println!("\n  (file: {})", config::Config::path().display());
             }
             ConfigAction::SetDir { path } => {
                 config.projects_dir = path.into();
@@ -114,11 +115,7 @@ fn main() -> anyhow::Result<()> {
                 let entry = config.projects.entry(project.clone()).or_default();
                 entry.subdirs = subdirs.clone();
                 config.save()?;
-                println!(
-                    "✅ subdirs for '{}': {}",
-                    project,
-                    subdirs.join(", ")
-                );
+                println!("✅ subdirs for '{}': {}", project, subdirs.join(", "));
             }
             ConfigAction::ClearSubdirs { project } => {
                 if let Some(p) = config.projects.get_mut(&project) {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-REPO="IvanG11/bolt"
+REPO="ivang11/bolt"
 DEST="/usr/local/bin/bolt"
 TMP="$(mktemp)"
 

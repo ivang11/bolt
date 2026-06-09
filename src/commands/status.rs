@@ -61,7 +61,9 @@ fn parse_ports(raw: &str) -> String {
 
     for part in raw.split(", ") {
         let part = part.trim();
-        let Some(arrow) = part.find("->") else { continue };
+        let Some(arrow) = part.find("->") else {
+            continue;
+        };
 
         let host_port = part[..arrow].rsplit(':').next().unwrap_or(&part[..arrow]);
         let container = part[arrow + 2..]
@@ -127,12 +129,15 @@ pub fn run() -> Result<()> {
             continue;
         }
 
-        groups.entry(project.to_string()).or_default().push(Container {
-            name: parts[1].trim().to_string(),
-            image: parts[2].trim().to_string(),
-            status: shorten_status(parts[3].trim()),
-            ports: parse_ports(parts[4].trim()),
-        });
+        groups
+            .entry(project.to_string())
+            .or_default()
+            .push(Container {
+                name: parts[1].trim().to_string(),
+                image: parts[2].trim().to_string(),
+                status: shorten_status(parts[3].trim()),
+                ports: parse_ports(parts[4].trim()),
+            });
     }
 
     // Compute column widths across all containers
