@@ -2,7 +2,7 @@ use crate::config::Config;
 use anyhow::Result;
 use colored::Colorize;
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn run_compose(compose_file: &Path, args: &[&str]) {
@@ -23,11 +23,7 @@ fn run_compose_checked(compose_file: &Path, args: &[&str]) -> Result<()> {
         .args(args)
         .status()?;
     if !status.success() {
-        anyhow::bail!(
-            "docker compose {} failed (exit {})",
-            args.join(" "),
-            status
-        );
+        anyhow::bail!("docker compose {} failed (exit {})", args.join(" "), status);
     }
     Ok(())
 }
@@ -63,16 +59,28 @@ pub fn stop_all(config: &Config) -> Result<()> {
 
     for line in text.lines().filter(|l| !l.is_empty()) {
         let parts: Vec<&str> = line.splitn(2, '§').collect();
-        if parts.len() < 2 { continue; }
+        if parts.len() < 2 {
+            continue;
+        }
         let project_name = parts[0].trim();
-        let working_dir  = parts[1].trim();
-        if project_name.is_empty() || working_dir.is_empty() { continue; }
-        if config.ignore.iter().any(|i| i == project_name) { continue; }
+        let working_dir = parts[1].trim();
+        if project_name.is_empty() || working_dir.is_empty() {
+            continue;
+        }
+        if config.ignore.iter().any(|i| i == project_name) {
+            continue;
+        }
 
         let working_path = Path::new(working_dir);
-        let working_canonical = working_path.canonicalize().unwrap_or(working_path.to_path_buf());
-        if !working_canonical.starts_with(&projects_dir_canonical) { continue; }
-        if !seen.insert(working_dir.to_string()) { continue; }
+        let working_canonical = working_path
+            .canonicalize()
+            .unwrap_or(working_path.to_path_buf());
+        if !working_canonical.starts_with(&projects_dir_canonical) {
+            continue;
+        }
+        if !seen.insert(working_dir.to_string()) {
+            continue;
+        }
 
         let compose = working_canonical.join("docker-compose.yml");
         if compose.exists() {
@@ -172,7 +180,11 @@ pub fn stop(project: &str, config: &Config) -> Result<()> {
 }
 
 pub fn start_subdir(project: &str, subdir: &str, config: &Config) -> Result<()> {
-    let compose = config.projects_dir.join(project).join(subdir).join("docker-compose.yml");
+    let compose = config
+        .projects_dir
+        .join(project)
+        .join(subdir)
+        .join("docker-compose.yml");
     if !compose.exists() {
         anyhow::bail!("No docker-compose.yml in '{}/{}'", project, subdir);
     }
@@ -180,7 +192,11 @@ pub fn start_subdir(project: &str, subdir: &str, config: &Config) -> Result<()> 
 }
 
 pub fn stop_subdir(project: &str, subdir: &str, config: &Config) -> Result<()> {
-    let compose = config.projects_dir.join(project).join(subdir).join("docker-compose.yml");
+    let compose = config
+        .projects_dir
+        .join(project)
+        .join(subdir)
+        .join("docker-compose.yml");
     if !compose.exists() {
         anyhow::bail!("No docker-compose.yml in '{}/{}'", project, subdir);
     }
@@ -215,9 +231,13 @@ pub fn build(project: &str, config: &Config) -> Result<()> {
     for sub in entries {
         let sub_name = sub.file_name().to_string_lossy().to_string();
         let sub_compose = sub.path().join("docker-compose.yml");
-        if !sub_compose.exists() { continue; }
+        if !sub_compose.exists() {
+            continue;
+        }
         if let Some(allowed_list) = allowed {
-            if !allowed_list.contains(&sub_name) { continue; }
+            if !allowed_list.contains(&sub_name) {
+                continue;
+            }
         }
         println!("   → building {}", sub_name.bold());
         run_compose_checked(&sub_compose, &["build", "--pull"])?;
@@ -264,7 +284,7 @@ fn start_project(dir: &Path, project_name: &str, config: &Config) -> Result<()> 
     let mut entries: Vec<_> = std::fs::read_dir(dir)?.flatten().collect();
     entries.sort_by_key(|e| e.file_name());
 
-    let mut found_any = false;
+    let mut targets: Vec<(String, PathBuf)> = Vec::new();
     for sub in entries {
         let sub_path = sub.path();
         let sub_name = sub.file_name().to_string_lossy().to_string();
@@ -282,15 +302,24 @@ fn start_project(dir: &Path, project_name: &str, config: &Config) -> Result<()> 
         }
 
         println!("   → starting {}", sub_name.bold());
-        run_compose(&sub_compose, &["up", "-d"]);
-        found_any = true;
+        targets.push((sub_name, sub_compose));
     }
 
-    if !found_any {
+    if targets.is_empty() {
         eprintln!(
             "   {} no docker-compose.yml found in '{}'",
             "⚠️", project_name
         );
+        return Ok(());
+    }
+
+    let handles: Vec<_> = targets
+        .into_iter()
+        .map(|(_, compose)| std::thread::spawn(move || run_compose(&compose, &["up", "-d"])))
+        .collect();
+
+    for handle in handles {
+        handle.join().ok();
     }
 
     Ok(())

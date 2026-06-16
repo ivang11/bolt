@@ -4,8 +4,8 @@ use anyhow::Result;
 use axum::{
     Router,
     body::Body,
-    extract::{Path, Query, State},
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
+    extract::{Path, Query, State},
     http::{Uri, header},
     response::{
         IntoResponse, Json, Response,
@@ -48,12 +48,22 @@ fn pid_file() -> PathBuf {
 pub fn run(config: Config, port: u16, daemon: bool, stop: bool) -> Result<()> {
     if stop {
         let path = pid_file();
-        let pid_str = std::fs::read_to_string(&path)
-            .map_err(|_| anyhow::anyhow!("No background UI server found (no PID file at {})", path.display()))?;
-        let pid: libc::pid_t = pid_str.trim().parse()
+        let pid_str = std::fs::read_to_string(&path).map_err(|_| {
+            anyhow::anyhow!(
+                "No background UI server found (no PID file at {})",
+                path.display()
+            )
+        })?;
+        let pid: libc::pid_t = pid_str
+            .trim()
+            .parse()
             .map_err(|_| anyhow::anyhow!("Invalid PID file"))?;
         let ret = unsafe { libc::kill(pid, libc::SIGTERM) };
-        anyhow::ensure!(ret == 0, "Failed to stop process (PID {}): already stopped?", pid);
+        anyhow::ensure!(
+            ret == 0,
+            "Failed to stop process (PID {}): already stopped?",
+            pid
+        );
         std::fs::remove_file(&path).ok();
         println!("Bolt UI stopped (PID {})", pid);
         return Ok(());
@@ -114,9 +124,18 @@ async fn serve(config: Config, port: u16) -> Result<()> {
         .route("/api/projects/{name}/restart", post(api_restart_project))
         .route("/api/projects/{name}/logs", get(api_project_logs))
         .route("/api/projects/{name}/info", get(api_project_info))
-        .route("/api/projects/{name}/subdirs/{subdir}/start", post(api_start_subdir))
-        .route("/api/projects/{name}/subdirs/{subdir}/stop", post(api_stop_subdir))
-        .route("/api/projects/{name}/subdirs/{subdir}/restart", post(api_restart_subdir))
+        .route(
+            "/api/projects/{name}/subdirs/{subdir}/start",
+            post(api_start_subdir),
+        )
+        .route(
+            "/api/projects/{name}/subdirs/{subdir}/stop",
+            post(api_stop_subdir),
+        )
+        .route(
+            "/api/projects/{name}/subdirs/{subdir}/restart",
+            post(api_restart_subdir),
+        )
         .route("/api/config", get(api_get_config))
         .route("/api/config/dir", post(api_set_dir))
         .route("/api/config/ignore", post(api_add_ignore))
@@ -141,7 +160,9 @@ async fn serve(config: Config, port: u16) -> Result<()> {
 
     tokio::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-        tokio::task::spawn_blocking(move || { let _ = open::that(url); });
+        tokio::task::spawn_blocking(move || {
+            let _ = open::that(url);
+        });
     });
 
     axum::serve(listener, app).await?;
@@ -198,9 +219,18 @@ async fn api_list_projects(State(state): State<SharedState>) -> Json<serde_json:
 async fn api_stop_all_projects(State(state): State<SharedState>) -> Json<ApiResult> {
     let config = state.config.read().await.clone();
     match tokio::task::spawn_blocking(move || switch::stop_all(&config)).await {
-        Ok(Ok(_)) => Json(ApiResult { ok: true, error: None }),
-        Ok(Err(e)) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+        Ok(Ok(_)) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Ok(Err(e)) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
@@ -217,9 +247,18 @@ async fn api_start_project(
 ) -> Json<ApiResult> {
     let config = state.config.read().await.clone();
     match tokio::task::spawn_blocking(move || switch::start(&name, &config)).await {
-        Ok(Ok(_)) => Json(ApiResult { ok: true, error: None }),
-        Ok(Err(e)) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+        Ok(Ok(_)) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Ok(Err(e)) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
@@ -229,9 +268,18 @@ async fn api_stop_project(
 ) -> Json<ApiResult> {
     let config = state.config.read().await.clone();
     match tokio::task::spawn_blocking(move || switch::stop(&name, &config)).await {
-        Ok(Ok(_)) => Json(ApiResult { ok: true, error: None }),
-        Ok(Err(e)) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+        Ok(Ok(_)) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Ok(Err(e)) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
@@ -241,9 +289,18 @@ async fn api_restart_project(
 ) -> Json<ApiResult> {
     let config = state.config.read().await.clone();
     match tokio::task::spawn_blocking(move || switch::restart(&name, &config)).await {
-        Ok(Ok(_)) => Json(ApiResult { ok: true, error: None }),
-        Ok(Err(e)) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+        Ok(Ok(_)) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Ok(Err(e)) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
@@ -253,9 +310,18 @@ async fn api_start_subdir(
 ) -> Json<ApiResult> {
     let config = state.config.read().await.clone();
     match tokio::task::spawn_blocking(move || switch::start_subdir(&name, &subdir, &config)).await {
-        Ok(Ok(_)) => Json(ApiResult { ok: true, error: None }),
-        Ok(Err(e)) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+        Ok(Ok(_)) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Ok(Err(e)) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
@@ -265,9 +331,18 @@ async fn api_stop_subdir(
 ) -> Json<ApiResult> {
     let config = state.config.read().await.clone();
     match tokio::task::spawn_blocking(move || switch::stop_subdir(&name, &subdir, &config)).await {
-        Ok(Ok(_)) => Json(ApiResult { ok: true, error: None }),
-        Ok(Err(e)) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+        Ok(Ok(_)) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Ok(Err(e)) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
@@ -276,10 +351,20 @@ async fn api_restart_subdir(
     State(state): State<SharedState>,
 ) -> Json<ApiResult> {
     let config = state.config.read().await.clone();
-    match tokio::task::spawn_blocking(move || switch::restart_subdir(&name, &subdir, &config)).await {
-        Ok(Ok(_)) => Json(ApiResult { ok: true, error: None }),
-        Ok(Err(e)) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+    match tokio::task::spawn_blocking(move || switch::restart_subdir(&name, &subdir, &config)).await
+    {
+        Ok(Ok(_)) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Ok(Err(e)) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
@@ -299,7 +384,13 @@ async fn api_build_project(
 
     tokio::spawn(async move {
         if compose_files.is_empty() {
-            let _ = tx.send(Event::default().event("done").data("error: no compose files found")).await;
+            let _ = tx
+                .send(
+                    Event::default()
+                        .event("done")
+                        .data("error: no compose files found"),
+                )
+                .await;
             return;
         }
 
@@ -313,7 +404,13 @@ async fn api_build_project(
                 .stderr(std::process::Stdio::piped())
                 .spawn()
             else {
-                let _ = tx.send(Event::default().event("done").data("error: failed to spawn docker")).await;
+                let _ = tx
+                    .send(
+                        Event::default()
+                            .event("done")
+                            .data("error: failed to spawn docker"),
+                    )
+                    .await;
                 return;
             };
 
@@ -325,13 +422,17 @@ async fn api_build_project(
             let out_task = tokio::spawn(async move {
                 let mut lines = BufReader::new(stdout).lines();
                 while let Ok(Some(line)) = lines.next_line().await {
-                    if tx_out.send(Event::default().data(line)).await.is_err() { break; }
+                    if tx_out.send(Event::default().data(line)).await.is_err() {
+                        break;
+                    }
                 }
             });
             let err_task = tokio::spawn(async move {
                 let mut lines = BufReader::new(stderr).lines();
                 while let Ok(Some(line)) = lines.next_line().await {
-                    if tx_err.send(Event::default().data(line)).await.is_err() { break; }
+                    if tx_err.send(Event::default().data(line)).await.is_err() {
+                        break;
+                    }
                 }
             });
 
@@ -403,9 +504,22 @@ async fn api_project_info(
                     let host_port = pub_entry["PublishedPort"].as_u64().unwrap_or(0) as u16;
                     let container_port = pub_entry["TargetPort"].as_u64().unwrap_or(0) as u16;
                     let protocol = pub_entry["Protocol"].as_str().unwrap_or("tcp").to_string();
-                    if host_port > 0 && seen.insert((host_port, container_port, protocol.clone(), service.clone())) {
+                    if host_port > 0
+                        && seen.insert((
+                            host_port,
+                            container_port,
+                            protocol.clone(),
+                            service.clone(),
+                        ))
+                    {
                         services_with_ports.insert(service.clone());
-                        ports.push(PortEntry { service: service.clone(), host_port, container_port, protocol, url: url.clone() });
+                        ports.push(PortEntry {
+                            service: service.clone(),
+                            host_port,
+                            container_port,
+                            protocol,
+                            url: url.clone(),
+                        });
                     }
                 }
             }
@@ -413,7 +527,13 @@ async fn api_project_info(
             if url.is_some() && !services_with_ports.contains(&service) {
                 services_with_ports.insert(service.clone());
                 if seen.insert((0, 0, String::new(), service.clone())) {
-                    ports.push(PortEntry { service: service.clone(), host_port: 0, container_port: 0, protocol: String::new(), url });
+                    ports.push(PortEntry {
+                        service: service.clone(),
+                        host_port: 0,
+                        container_port: 0,
+                        protocol: String::new(),
+                        url,
+                    });
                 }
             }
         }
@@ -431,7 +551,10 @@ fn parse_compose_ps(stdout: &str) -> Vec<serde_json::Value> {
         serde_json::from_str(trimmed).unwrap_or_default()
     } else {
         // NDJSON: one object per line (older Docker Compose)
-        trimmed.lines().filter_map(|l| serde_json::from_str(l).ok()).collect()
+        trimmed
+            .lines()
+            .filter_map(|l| serde_json::from_str(l).ok())
+            .collect()
     }
 }
 
@@ -502,13 +625,17 @@ async fn stream_compose_logs(tx: tokio::sync::mpsc::Sender<String>, compose_file
     tokio::spawn(async move {
         let mut lines = BufReader::new(stdout).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            if tx_out.send(line).await.is_err() { break; }
+            if tx_out.send(line).await.is_err() {
+                break;
+            }
         }
     });
 
     let mut lines = BufReader::new(stderr).lines();
     while let Ok(Some(line)) = lines.next_line().await {
-        if tx.send(line).await.is_err() { break; }
+        if tx.send(line).await.is_err() {
+            break;
+        }
     }
 }
 
@@ -524,7 +651,9 @@ async fn api_get_config(State(state): State<SharedState>) -> Json<serde_json::Va
 }
 
 #[derive(Deserialize)]
-struct SetDirBody { path: String }
+struct SetDirBody {
+    path: String,
+}
 
 async fn api_set_dir(
     State(state): State<SharedState>,
@@ -533,13 +662,21 @@ async fn api_set_dir(
     let mut config = state.config.write().await;
     config.projects_dir = PathBuf::from(&body.path);
     match config.save() {
-        Ok(_) => Json(ApiResult { ok: true, error: None }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+        Ok(_) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
 #[derive(Deserialize)]
-struct IgnoreBody { project: String }
+struct IgnoreBody {
+    project: String,
+}
 
 async fn api_add_ignore(
     State(state): State<SharedState>,
@@ -550,8 +687,14 @@ async fn api_add_ignore(
         config.ignore.push(body.project);
     }
     match config.save() {
-        Ok(_) => Json(ApiResult { ok: true, error: None }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+        Ok(_) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
@@ -562,13 +705,21 @@ async fn api_remove_ignore(
     let mut config = state.config.write().await;
     config.ignore.retain(|p| p != &project);
     match config.save() {
-        Ok(_) => Json(ApiResult { ok: true, error: None }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+        Ok(_) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
 #[derive(Deserialize)]
-struct SetSubdirsBody { subdirs: Vec<String> }
+struct SetSubdirsBody {
+    subdirs: Vec<String>,
+}
 
 async fn api_set_subdirs(
     Path(name): Path<String>,
@@ -578,8 +729,14 @@ async fn api_set_subdirs(
     let mut config = state.config.write().await;
     config.projects.entry(name).or_default().subdirs = body.subdirs;
     match config.save() {
-        Ok(_) => Json(ApiResult { ok: true, error: None }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+        Ok(_) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
@@ -590,8 +747,14 @@ async fn api_clear_subdirs(
     let mut config = state.config.write().await;
     config.projects.remove(&name);
     match config.save() {
-        Ok(_) => Json(ApiResult { ok: true, error: None }),
-        Err(e) => Json(ApiResult { ok: false, error: Some(e.to_string()) }),
+        Ok(_) => Json(ApiResult {
+            ok: true,
+            error: None,
+        }),
+        Err(e) => Json(ApiResult {
+            ok: false,
+            error: Some(e.to_string()),
+        }),
     }
 }
 
@@ -612,9 +775,11 @@ async fn api_project_services(
     };
 
     let Ok(output) = tokio::process::Command::new("docker")
-        .args(["compose", "-f"]).arg(compose_file)
+        .args(["compose", "-f"])
+        .arg(compose_file)
         .args(["ps", "--format", "json", "--all"])
-        .output().await
+        .output()
+        .await
     else {
         return Json(serde_json::json!({ "services": [] }));
     };
@@ -624,8 +789,13 @@ async fn api_project_services(
         .into_iter()
         .filter_map(|c| {
             let svc = c["Service"].as_str()?.to_string();
-            let status = if c["State"].as_str() == Some("running") { "running" } else { "stopped" };
-            seen.insert(svc.clone()).then_some(serde_json::json!({ "name": svc, "status": status }))
+            let status = if c["State"].as_str() == Some("running") {
+                "running"
+            } else {
+                "stopped"
+            };
+            seen.insert(svc.clone())
+                .then_some(serde_json::json!({ "name": svc, "status": status }))
         })
         .collect();
 
@@ -652,7 +822,12 @@ async fn api_shell(
     })
 }
 
-async fn run_shell(socket: WebSocket, name: String, query: ShellQuery, state: SharedState) -> anyhow::Result<()> {
+async fn run_shell(
+    socket: WebSocket,
+    name: String,
+    query: ShellQuery,
+    state: SharedState,
+) -> anyhow::Result<()> {
     use std::ffi::CString;
     use std::os::unix::io::{AsRawFd, FromRawFd};
     use std::os::unix::process::CommandExt;
@@ -667,40 +842,77 @@ async fn run_shell(socket: WebSocket, name: String, query: ShellQuery, state: Sh
     let (compose_file, match_by_service) = match query.service.as_deref() {
         Some(svc) => {
             if let Some(f) = all_files.iter().find(|f| {
-                f.parent().and_then(|d| d.file_name()).map(|n| n.to_str() == Some(svc)).unwrap_or(false)
+                f.parent()
+                    .and_then(|d| d.file_name())
+                    .map(|n| n.to_str() == Some(svc))
+                    .unwrap_or(false)
             }) {
                 (f.clone(), false)
             } else {
-                (all_files.into_iter().next().ok_or_else(|| anyhow::anyhow!("no compose file"))?, true)
+                (
+                    all_files
+                        .into_iter()
+                        .next()
+                        .ok_or_else(|| anyhow::anyhow!("no compose file"))?,
+                    true,
+                )
             }
         }
-        None => (all_files.into_iter().next().ok_or_else(|| anyhow::anyhow!("no compose file"))?, false),
+        None => (
+            all_files
+                .into_iter()
+                .next()
+                .ok_or_else(|| anyhow::anyhow!("no compose file"))?,
+            false,
+        ),
     };
 
     let output = tokio::process::Command::new("docker")
-        .args(["compose", "-f"]).arg(&compose_file)
+        .args(["compose", "-f"])
+        .arg(&compose_file)
         .args(["ps", "--format", "json"])
-        .output().await?;
+        .output()
+        .await?;
 
     let containers = parse_compose_ps(&String::from_utf8_lossy(&output.stdout));
     let container = if match_by_service {
         let svc = query.service.as_deref().unwrap();
-        containers.iter().find(|c| c["Service"].as_str() == Some(svc)).cloned()
+        containers
+            .iter()
+            .find(|c| c["Service"].as_str() == Some(svc))
+            .cloned()
     } else {
-        containers.iter()
-            .find(|c| c["State"].as_str() == Some("running") || c["Status"].as_str().map(|s| s.starts_with("Up")).unwrap_or(false))
+        containers
+            .iter()
+            .find(|c| {
+                c["State"].as_str() == Some("running")
+                    || c["Status"]
+                        .as_str()
+                        .map(|s| s.starts_with("Up"))
+                        .unwrap_or(false)
+            })
             .or_else(|| containers.first())
             .cloned()
-    }.ok_or_else(|| anyhow::anyhow!("container not found"))?;
+    }
+    .ok_or_else(|| anyhow::anyhow!("container not found"))?;
 
-    let container_name = container["Name"].as_str()
-        .ok_or_else(|| anyhow::anyhow!("no container name"))?.to_string();
+    let container_name = container["Name"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("no container name"))?
+        .to_string();
 
     // Allocate PTY using POSIX functions
     let master_fd = unsafe { libc::posix_openpt(libc::O_RDWR | libc::O_NOCTTY) };
     anyhow::ensure!(master_fd >= 0, "posix_openpt failed");
-    unsafe { libc::grantpt(master_fd); libc::unlockpt(master_fd); }
-    let slave_path = unsafe { std::ffi::CStr::from_ptr(libc::ptsname(master_fd)).to_string_lossy().into_owned() };
+    unsafe {
+        libc::grantpt(master_fd);
+        libc::unlockpt(master_fd);
+    }
+    let slave_path = unsafe {
+        std::ffi::CStr::from_ptr(libc::ptsname(master_fd))
+            .to_string_lossy()
+            .into_owned()
+    };
     let slave_name = CString::new(slave_path)?;
     let slave_fd = unsafe { libc::open(slave_name.as_ptr(), libc::O_RDWR) };
     anyhow::ensure!(slave_fd >= 0, "open slave PTY failed");
@@ -708,8 +920,15 @@ async fn run_shell(socket: WebSocket, name: String, query: ShellQuery, state: Sh
     // Spawn docker exec with PTY slave as stdio
     // Try bash first (has readline/history), fall back to sh
     let mut std_cmd = std::process::Command::new("docker");
-    std_cmd.args(["exec", "-it", &container_name,
-        "sh", "-c", "command -v bash > /dev/null 2>&1 && exec bash || exec sh"])
+    std_cmd
+        .args([
+            "exec",
+            "-it",
+            &container_name,
+            "sh",
+            "-c",
+            "command -v bash > /dev/null 2>&1 && exec bash || exec sh",
+        ])
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
@@ -721,16 +940,22 @@ async fn run_shell(socket: WebSocket, name: String, query: ShellQuery, state: Sh
             libc::dup2(slave_fd, 0);
             libc::dup2(slave_fd, 1);
             libc::dup2(slave_fd, 2);
-            if slave_fd > 2 { libc::close(slave_fd); }
+            if slave_fd > 2 {
+                libc::close(slave_fd);
+            }
             Ok(())
         });
     }
 
     let mut child = tokio::process::Command::from(std_cmd).spawn()?;
-    unsafe { libc::close(slave_fd); }
+    unsafe {
+        libc::close(slave_fd);
+    }
 
     // Wrap master in AsyncFd for proper epoll-based async I/O on PTY
-    unsafe { libc::fcntl(master_fd, libc::F_SETFL, libc::O_NONBLOCK); }
+    unsafe {
+        libc::fcntl(master_fd, libc::F_SETFL, libc::O_NONBLOCK);
+    }
     let master_file = unsafe { std::fs::File::from_raw_fd(master_fd) };
     let afd = std::sync::Arc::new(tokio::io::unix::AsyncFd::new(master_file)?);
 
@@ -746,12 +971,28 @@ async fn run_shell(socket: WebSocket, name: String, query: ShellQuery, state: Sh
                 Err(_) => break,
             };
             match guard.try_io(|inner| {
-                let n = unsafe { libc::read(inner.get_ref().as_raw_fd(), buf.as_mut_ptr() as *mut _, buf.len()) };
-                if n < 0 { Err(std::io::Error::last_os_error()) } else { Ok(n as usize) }
+                let n = unsafe {
+                    libc::read(
+                        inner.get_ref().as_raw_fd(),
+                        buf.as_mut_ptr() as *mut _,
+                        buf.len(),
+                    )
+                };
+                if n < 0 {
+                    Err(std::io::Error::last_os_error())
+                } else {
+                    Ok(n as usize)
+                }
             }) {
                 Ok(Ok(0)) => break,
                 Ok(Ok(n)) => {
-                    if ws_tx.send(Message::Binary(buf[..n].to_vec().into())).await.is_err() { break; }
+                    if ws_tx
+                        .send(Message::Binary(buf[..n].to_vec().into()))
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
                 }
                 Ok(Err(_)) => break,
                 Err(_) => {} // WouldBlock, retry
@@ -769,9 +1010,12 @@ async fn run_shell(socket: WebSocket, name: String, query: ShellQuery, state: Sh
                         let ws = libc::winsize {
                             ws_col: v["cols"].as_u64().unwrap_or(80) as u16,
                             ws_row: v["rows"].as_u64().unwrap_or(24) as u16,
-                            ws_xpixel: 0, ws_ypixel: 0,
+                            ws_xpixel: 0,
+                            ws_ypixel: 0,
                         };
-                        unsafe { libc::ioctl(master_fd, libc::TIOCSWINSZ as _, &ws as *const _); }
+                        unsafe {
+                            libc::ioctl(master_fd, libc::TIOCSWINSZ as _, &ws as *const _);
+                        }
                     }
                     continue;
                 }
@@ -785,11 +1029,23 @@ async fn run_shell(socket: WebSocket, name: String, query: ShellQuery, state: Sh
         while written < bytes.len() {
             let mut guard = match afd.writable().await {
                 Ok(g) => g,
-                Err(_) => { break; }
+                Err(_) => {
+                    break;
+                }
             };
             match guard.try_io(|inner| {
-                let n = unsafe { libc::write(inner.get_ref().as_raw_fd(), bytes[written..].as_ptr() as *const _, bytes.len() - written) };
-                if n < 0 { Err(std::io::Error::last_os_error()) } else { Ok(n as usize) }
+                let n = unsafe {
+                    libc::write(
+                        inner.get_ref().as_raw_fd(),
+                        bytes[written..].as_ptr() as *const _,
+                        bytes.len() - written,
+                    )
+                };
+                if n < 0 {
+                    Err(std::io::Error::last_os_error())
+                } else {
+                    Ok(n as usize)
+                }
             }) {
                 Ok(Ok(n)) => written += n,
                 Ok(Err(_)) => break,
@@ -813,15 +1069,25 @@ fn extract_host_from_rule(rule: &str) -> Option<String> {
     Some(rule[after..after + end].to_string())
 }
 
-fn extract_traefik_urls(compose_file: &std::path::Path) -> std::collections::HashMap<String, String> {
+fn extract_traefik_urls(
+    compose_file: &std::path::Path,
+) -> std::collections::HashMap<String, String> {
     let mut urls = std::collections::HashMap::new();
-    let Ok(content) = std::fs::read_to_string(compose_file) else { return urls };
-    let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&content) else { return urls };
-    let Some(services) = yaml.get("services").and_then(|v| v.as_mapping()) else { return urls };
+    let Ok(content) = std::fs::read_to_string(compose_file) else {
+        return urls;
+    };
+    let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&content) else {
+        return urls;
+    };
+    let Some(services) = yaml.get("services").and_then(|v| v.as_mapping()) else {
+        return urls;
+    };
 
     for (svc_key, svc_val) in services {
         let svc_name = svc_key.as_str().unwrap_or("").to_string();
-        let Some(labels) = svc_val.get("labels") else { continue };
+        let Some(labels) = svc_val.get("labels") else {
+            continue;
+        };
 
         let mut host: Option<String> = None;
         let mut is_https = false;
@@ -833,7 +1099,11 @@ fn extract_traefik_urls(compose_file: &std::path::Path) -> std::collections::Has
                 .collect(),
             serde_yaml::Value::Sequence(seq) => seq
                 .iter()
-                .filter_map(|item| item.as_str()?.split_once('=').map(|(k, v)| (k.to_string(), v.to_string())))
+                .filter_map(|item| {
+                    item.as_str()?
+                        .split_once('=')
+                        .map(|(k, v)| (k.to_string(), v.to_string()))
+                })
                 .collect(),
             _ => continue,
         };

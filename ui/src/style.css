@@ -1153,6 +1153,7 @@ body {
     flex-direction: column;
     border-top: 1px solid var(--border);
     flex-shrink: 0;
+    min-width: 0;
 }
 .dw-shell-header {
     display: flex;
@@ -1164,9 +1165,12 @@ body {
 .dw-shell-term {
     padding: 6px 8px;
     background: #0b0e16;
+    min-width: 0;
+    overflow: hidden;
 }
 .dw-shell-term .xterm {
     padding: 0;
+    max-width: 100%;
 }
 
 /* ─── Animations ─────────────────────────────────────── */

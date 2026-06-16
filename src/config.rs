@@ -24,10 +24,7 @@ impl Config {
     }
 
     pub fn path() -> PathBuf {
-        dirs::config_dir()
-            .unwrap()
-            .join("bolt")
-            .join("config.toml")
+        dirs::config_dir().unwrap().join("bolt").join("config.toml")
     }
 
     pub fn load() -> Result<Self> {
