@@ -8,6 +8,9 @@ CLI to manage Docker Compose projects.
 curl -fsSL https://raw.githubusercontent.com/ivang11/bolt/main/install.sh | sudo bash
 ```
 
+The installer downloads the latest release binary for your platform (Linux x86_64,
+macOS Intel, or macOS Apple Silicon).
+
 ### From source (requires Rust)
 
 ```bash
@@ -69,8 +72,7 @@ make release
 If you need to build the binary locally without the workflow, do it manually:
 
 ```bash
-cd ui && npm run build && cd ..
-cargo build --release
+make build
 ```
 
 ## Shell completions
@@ -137,7 +139,9 @@ git commit -m "bump v1.1.0"
 make release
 ```
 
-This creates the tag `v1.1.0` and pushes it. GitHub Actions detects the tag, builds the binary and uploads it to GitHub Releases automatically.
+This creates the tag `v1.1.0` and pushes it. GitHub Actions detects the tag,
+builds Linux and macOS binaries, and uploads them to GitHub Releases
+automatically.
 
 ## License
 

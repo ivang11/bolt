@@ -7,7 +7,16 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: bolt-linux-x64
+          - os: macos-15-intel
+            asset: bolt-macos-x64
+          - os: macos-14
+            asset: bolt-macos-arm64
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
 
@@ -29,7 +38,10 @@ jobs:
       - name: Build
         run: cargo build --release
 
+      - name: Rename binary
+        run: cp target/release/bolt ${{ matrix.asset }}
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: target/release/bolt
+          files: ${{ matrix.asset }}

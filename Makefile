@@ -1,10 +1,14 @@
-.PHONY: build install uninstall release
+.PHONY: build ui-build install uninstall release
 
-build:
+build: ui-build
 	cargo build --release
 
+ui-build:
+	cd ui && npm ci && npm run build
+
 install:
-	install -Dm755 target/release/bolt /usr/local/bin/bolt
+	mkdir -p /usr/local/bin
+	install -m 755 target/release/bolt /usr/local/bin/bolt
 
 uninstall:
 	rm -f /usr/local/bin/bolt
