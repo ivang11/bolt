@@ -29,8 +29,9 @@ sudo make install
 | `bolt switch <project> --keep`              | Start without stopping others                         |
 | `bolt list`                                 | List projects with status ▶/⏹                         |
 | `bolt status`                               | Show active containers grouped by project             |
+| `bolt cleanup`                             | Preview resources left by deleted projects           |
 | `bolt stop`                                 | Stop all active projects in projects_dir              |
-| `bolt restart <project>`                    | Restart a project (down + up) without touching others |
+| `bolt restart <project>`                    | Restart a project (stop + up), preserving volumes |
 | `bolt config show`                          | Show current configuration                            |
 | `bolt config set-dir <path>`                | Change the root projects directory                    |
 | `bolt config set-ui-port <port>`            | Save the default web UI port                          |
@@ -88,6 +89,41 @@ If you need to build the binary locally without the workflow, do it manually:
 make build
 ```
 
+## Storage cleanup
+
+```bash
+bolt cleanup                          # preview only
+bolt cleanup --apply                  # confirm removal of stopped containers and networks
+bolt cleanup --apply --volumes        # also confirm each volume separately
+bolt cleanup --volume NAME            # preview a specific unused volume
+bolt cleanup --apply --volume NAME    # confirm deletion of that volume and its data
+bolt cleanup --apply --images         # also review dangling images across the daemon
+bolt cleanup --apply --build-cache    # also review unused cache across the builder
+```
+
+Containers are candidates only when Compose labels identify a missing working
+folder inside `projects_dir`. Existing, running, ignored and outside projects
+are preserved. Networks and volumes must be attributable to those verified
+projects; shared resources are excluded. If only an old volume or network
+remains, its project name alone cannot prove where the project used to live.
+Other unused volumes are listed for manual review with `--volume NAME`.
+When used alone, `--volume NAME` shows only the named volume and `--apply`
+only offers to delete that selection. Repeat `--volume` to select several.
+Adding `--volumes`, `--images` or `--build-cache` includes the broader cleanup report.
+
+The preview reports Docker storage use and exact candidate names. With
+`--apply`, confirmations default to No. Removing containers loses their
+writable layers; removing a volume permanently deletes its data. Containers
+are removed without deleting their volumes. Volumes are excluded unless
+explicitly selected, and each selected volume gets its own confirmation.
+A manual volume must be unreferenced by every container, including stopped ones.
+The project's path and state are checked again before deleting resources.
+
+Images and build cache are shared: their explicit flags apply to the current
+Docker daemon / selected builder, rather than just `projects_dir`. `--images`
+selects dangling images only. Bolt never runs a global volume or container prune.
+See `bolt cleanup --help` for all options.
+
 ## Shell completions
 
 `bolt switch <tab>` autocompletes project names. Shell completions are installed automatically during `bolt setup`.
@@ -108,6 +144,12 @@ subdirs = ["acme", "acme-api"]
 ```
 
 ## Stop behaviour
+
+Stopping, switching away from, or restarting a project uses `docker compose stop`.
+Containers, networks and volumes are preserved so the next `up -d` can reuse them,
+including anonymous volumes. This applies to both the CLI and web UI.
+Compose may still recreate containers when their image or configuration changes.
+Bolt reports Compose failures instead of claiming the operation succeeded.
 
 - Only stops projects inside `projects_dir`
 - Queries `docker ps` directly — no directory iteration

@@ -25,10 +25,28 @@ pub enum Commands {
     Status,
     /// Stop all active projects in projects_dir
     Stop,
-    /// Restart a project (down + up) without touching others
+    /// Restart a project (stop + up), preserving containers and volumes
     Restart { project: String },
     /// Rebuild Docker images for a project
     Build { project: String },
+    /// Preview resources left by deleted projects; use --apply to confirm removal
+    Cleanup {
+        /// Ask for confirmation and remove the selected resources
+        #[arg(long)]
+        apply: bool,
+        /// Include orphan project volumes, with a separate confirmation per volume
+        #[arg(long)]
+        volumes: bool,
+        /// Review only the named unused volumes unless other cleanup options are included (repeatable)
+        #[arg(long, value_name = "NAME")]
+        volume: Vec<String>,
+        /// Include unused dangling images across the Docker daemon
+        #[arg(long)]
+        images: bool,
+        /// Include unused build cache across the selected Docker builder
+        #[arg(long)]
+        build_cache: bool,
+    },
     /// Launch the web UI (saved port or 7000; override with --port)
     Ui {
         /// Override the saved web UI port for this launch (default: 7000; save with bolt config set-ui-port)

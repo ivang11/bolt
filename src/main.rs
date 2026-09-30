@@ -81,6 +81,15 @@ fn main() -> anyhow::Result<()> {
         Commands::Build { project } => {
             commands::switch::build(&project, &config)?;
         }
+        Commands::Cleanup {
+            apply,
+            volumes,
+            volume,
+            images,
+            build_cache,
+        } => {
+            commands::cleanup::run(&config, apply, volumes, &volume, images, build_cache)?;
+        }
         Commands::Ui { port, daemon, stop } => {
             let port = if stop {
                 0

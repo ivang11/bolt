@@ -5,16 +5,6 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-fn run_compose(compose_file: &Path, args: &[&str]) {
-    Command::new("docker")
-        .arg("compose")
-        .arg("-f")
-        .arg(compose_file)
-        .args(args)
-        .status()
-        .ok();
-}
-
 fn run_compose_checked(compose_file: &Path, args: &[&str]) -> Result<()> {
     let status = Command::new("docker")
         .arg("compose")
@@ -28,15 +18,19 @@ fn run_compose_checked(compose_file: &Path, args: &[&str]) -> Result<()> {
     Ok(())
 }
 
-fn is_running(compose_file: &Path) -> bool {
-    Command::new("docker")
+fn is_running(compose_file: &Path) -> Result<bool> {
+    let output = Command::new("docker")
         .arg("compose")
         .arg("-f")
         .arg(compose_file)
         .args(["ps", "-q"])
-        .output()
-        .map(|o| !o.stdout.trim_ascii().is_empty())
-        .unwrap_or(false)
+        .output()?;
+    anyhow::ensure!(
+        output.status.success(),
+        "docker compose ps failed: {}",
+        String::from_utf8_lossy(&output.stderr).trim()
+    );
+    Ok(!output.stdout.trim_ascii().is_empty())
 }
 
 pub fn stop_all(config: &Config) -> Result<()> {
@@ -47,6 +41,12 @@ pub fn stop_all(config: &Config) -> Result<()> {
             "{{.Label \"com.docker.compose.project\"}}§{{.Label \"com.docker.compose.project.working_dir\"}}",
         ])
         .output()?;
+
+    anyhow::ensure!(
+        output.status.success(),
+        "docker ps failed: {}",
+        String::from_utf8_lossy(&output.stderr).trim()
+    );
 
     let text = String::from_utf8_lossy(&output.stdout);
     let projects_dir_canonical = config
@@ -94,14 +94,10 @@ pub fn stop_all(config: &Config) -> Result<()> {
 
     let handles: Vec<_> = targets
         .into_iter()
-        .map(|compose| std::thread::spawn(move || run_compose(&compose, &["down"])))
+        .map(|compose| std::thread::spawn(move || run_compose_checked(&compose, &["stop"])))
         .collect();
 
-    for h in handles {
-        h.join().ok();
-    }
-
-    Ok(())
+    wait_for_compose(handles)
 }
 
 pub fn run(project: &str, keep: bool, config: &Config) -> Result<()> {
@@ -127,9 +123,9 @@ fn stop_project(dir: &Path, project_name: &str, config: &Config) -> Result<()> {
     let compose = dir.join("docker-compose.yml");
 
     if compose.exists() {
-        if is_running(&compose) {
+        if is_running(&compose)? {
             println!("   → stopping {}", project_name.dimmed());
-            run_compose(&compose, &["down"]);
+            run_compose_checked(&compose, &["stop"])?;
         }
         return Ok(());
     }
@@ -154,9 +150,9 @@ fn stop_project(dir: &Path, project_name: &str, config: &Config) -> Result<()> {
             }
         }
 
-        if is_running(&sub_compose) {
+        if is_running(&sub_compose)? {
             println!("   → stopping {}", sub_name.dimmed());
-            run_compose(&sub_compose, &["down"]);
+            run_compose_checked(&sub_compose, &["stop"])?;
         }
     }
 
@@ -200,7 +196,7 @@ pub fn stop_subdir(project: &str, subdir: &str, config: &Config) -> Result<()> {
     if !compose.exists() {
         anyhow::bail!("No docker-compose.yml in '{}/{}'", project, subdir);
     }
-    run_compose_checked(&compose, &["down"])
+    run_compose_checked(&compose, &["stop"])
 }
 
 pub fn restart_subdir(project: &str, subdir: &str, config: &Config) -> Result<()> {
@@ -274,7 +270,7 @@ fn start_project(dir: &Path, project_name: &str, config: &Config) -> Result<()> 
 
     if compose.exists() {
         println!("   → starting {}", project_name.bold());
-        run_compose(&compose, &["up", "-d"]);
+        run_compose_checked(&compose, &["up", "-d"])?;
         return Ok(());
     }
 
@@ -315,12 +311,24 @@ fn start_project(dir: &Path, project_name: &str, config: &Config) -> Result<()> 
 
     let handles: Vec<_> = targets
         .into_iter()
-        .map(|(_, compose)| std::thread::spawn(move || run_compose(&compose, &["up", "-d"])))
+        .map(|(_, compose)| {
+            std::thread::spawn(move || run_compose_checked(&compose, &["up", "-d"]))
+        })
         .collect();
 
-    for handle in handles {
-        handle.join().ok();
-    }
+    wait_for_compose(handles)
+}
 
+// Wait for every operation, including when another worker has already failed.
+fn wait_for_compose(handles: Vec<std::thread::JoinHandle<Result<()>>>) -> Result<()> {
+    let mut errors = Vec::new();
+    for handle in handles {
+        match handle.join() {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => errors.push(error.to_string()),
+            Err(_) => errors.push("Compose worker panicked".to_string()),
+        }
+    }
+    anyhow::ensure!(errors.is_empty(), "{}", errors.join("\n"));
     Ok(())
 }
