@@ -82,6 +82,11 @@ fn main() -> anyhow::Result<()> {
             commands::switch::build(&project, &config)?;
         }
         Commands::Ui { port, daemon, stop } => {
+            let port = if stop {
+                0
+            } else {
+                config.resolve_ui_port(port)?
+            };
             commands::ui::run(config, port, daemon, stop)?;
         }
         Commands::Status => {
@@ -96,6 +101,11 @@ fn main() -> anyhow::Result<()> {
                 config.projects_dir = path.into();
                 config.save()?;
                 println!("✅ projects_dir updated");
+            }
+            ConfigAction::SetUiPort { port } => {
+                config.ui_port = port;
+                config.save()?;
+                println!("✅ UI port set to {} (takes effect on next launch)", port);
             }
             ConfigAction::Ignore { project } => {
                 if !config.ignore.contains(&project) {

@@ -33,6 +33,7 @@ sudo make install
 | `bolt restart <project>`                    | Restart a project (down + up) without touching others |
 | `bolt config show`                          | Show current configuration                            |
 | `bolt config set-dir <path>`                | Change the root projects directory                    |
+| `bolt config set-ui-port <port>`            | Save the default web UI port                          |
 | `bolt config ignore <project>`              | Add a project to the ignore list                      |
 | `bolt config unignore <project>`            | Remove a project from the ignore list                 |
 | `bolt config set-subdirs <project> <s1,s2>` | Define which subdirs to start for a project           |
@@ -47,6 +48,18 @@ sudo make install
 bolt ui            # default port 7000
 bolt ui --port 8080
 ```
+
+To save a different default port (for example, if port 7000 is already in use on macOS):
+
+```bash
+bolt config set-ui-port 8080
+bolt ui                       # uses the saved port 8080
+bolt ui --port 9000            # overrides it for this launch only
+```
+
+The default remains 7000 until you change it. The saved port also applies to
+`bolt ui --daemon`. If the UI is already running, stop it and launch it again;
+for a background server, use `bolt ui --stop` and then `bolt ui --daemon`.
 
 ### Running in development
 
@@ -81,12 +94,14 @@ make build
 
 ## Configuration
 
-The config file is created automatically at:
-`~/.config/bolt/config.toml`
+The config file is created automatically at `~/.config/bolt/config.toml` on Linux
+and `~/Library/Application Support/bolt/config.toml` on macOS.
+Use `bolt config show` to see the exact path.
 
 ```toml
 projects_dir = "/home/user/Projects"
 ignore = ["docker-services"]
+ui_port = 7000
 
 [projects.acme]
 subdirs = ["acme", "acme-api"]

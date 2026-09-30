@@ -29,11 +29,11 @@ pub enum Commands {
     Restart { project: String },
     /// Rebuild Docker images for a project
     Build { project: String },
-    /// Launch the web UI
+    /// Launch the web UI (saved port or 7000; override with --port)
     Ui {
-        /// Port for the API server
-        #[arg(long, default_value_t = 7000)]
-        port: u16,
+        /// Override the saved web UI port for this launch (default: 7000; save with bolt config set-ui-port)
+        #[arg(long, value_parser = clap::value_parser!(u16).range(1..))]
+        port: Option<u16>,
         /// Run in the background (detach from terminal)
         #[arg(long, short = 'd')]
         daemon: bool,
@@ -48,12 +48,54 @@ pub enum Commands {
     },
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    #[test]
+    fn help_explains_port_configuration() {
+        let mut command = Cli::command();
+        let ui_help = command
+            .find_subcommand_mut("ui")
+            .unwrap()
+            .render_long_help()
+            .to_string();
+        assert!(ui_help.contains("--port"));
+        assert!(ui_help.contains("7000"));
+        assert!(ui_help.contains("bolt config set-ui-port"));
+        let config_help = command
+            .find_subcommand_mut("config")
+            .unwrap()
+            .render_long_help()
+            .to_string();
+        assert!(config_help.contains("set-ui-port"));
+    }
+
+    #[test]
+    fn port_arguments_require_a_valid_port() {
+        for port in ["0", "65536", "-1", "abc"] {
+            assert!(Cli::try_parse_from(["bolt", "ui", "--port", port]).is_err());
+            assert!(Cli::try_parse_from(["bolt", "config", "set-ui-port", port]).is_err());
+        }
+        for port in ["1", "8080", "65535"] {
+            assert!(Cli::try_parse_from(["bolt", "ui", "--port", port]).is_ok());
+            assert!(Cli::try_parse_from(["bolt", "config", "set-ui-port", port]).is_ok());
+        }
+    }
+}
+
 #[derive(Subcommand)]
 pub enum ConfigAction {
     /// Show current configuration
     Show,
     /// Change the root projects directory
     SetDir { path: String },
+    /// Set the default web UI port (takes effect on next launch)
+    SetUiPort {
+        #[arg(value_parser = clap::value_parser!(u16).range(1..))]
+        port: u16,
+    },
     /// Add a project to the ignore list
     Ignore { project: String },
     /// Remove a project from the ignore list
